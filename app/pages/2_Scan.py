@@ -1,11 +1,9 @@
 """
 pages/2_Scan.py — capture or upload a label image, then run the pipeline.
 
-Depends on:
-  - app.pipeline.pipeline_runner.run_pipeline(image) — built in a later batch.
-    Until that file exists, this page loads fine but clicking "Run Scan"
-    will error. Expected at this stage.
-  - Requires persona to already be set (redirects back if not).
+Depends on app.pipeline.pipeline_runner.run_pipeline(image).
+Persona defaults to "consumer" if not explicitly set — no forced detour
+through Persona Selection; users can switch anytime from the sidebar.
 """
 
 import streamlit as st
@@ -19,15 +17,16 @@ st.set_page_config(page_title="Scan — Ikraceya", page_icon="📷")
 if not require_login():
     st.stop()
 
-if "persona" not in st.session_state:
-    st.warning("Please select a persona first.")
-    st.switch_page("pages/1_Persona_Selection.py")
-    st.stop()
+# Default to consumer instead of forcing a detour through persona selection.
+st.session_state.setdefault("persona", "consumer")
 
 render_sidebar()
 
 st.title("Scan a Product Label")
-st.caption(f"Scanning as: **{st.session_state['persona']}**")
+st.caption(
+    f"Scanning as: **{st.session_state['persona']}** "
+    "— switch anytime from the sidebar."
+)
 
 tab_upload, tab_camera = st.tabs(["📁 Upload Image", "📷 Use Camera"])
 
@@ -60,9 +59,12 @@ if captured_image is not None:
                 st.session_state["scan_result"] = result
                 st.switch_page("pages/3_Results.py")
             except ModuleNotFoundError as e:
-                   st.error(
-                               f"Import failed: **{e}**\n\n"
-                   )
+                st.error(
+                    f"Import failed: **{e}**\n\n"
+                    "Check that every folder under app/ (pipeline, rules, utils) "
+                    "has an empty `__init__.py` file, and that all packages in "
+                    "requirements.txt installed without errors."
+                )
             except Exception as e:
                 st.error(f"Something went wrong while scanning: {e}")
 else:

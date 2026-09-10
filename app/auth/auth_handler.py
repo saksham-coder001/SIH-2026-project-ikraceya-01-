@@ -77,6 +77,10 @@ def login_user(username: str, plain_password: str) -> tuple[bool, str]:
         st.session_state["user_id"] = user.user_id
         st.session_state["username"] = user.username
         st.session_state["role"] = user.role
+        # Default persona to consumer so users can start scanning immediately
+        # without being forced through persona selection first. They can
+        # switch anytime from the sidebar.
+        st.session_state.setdefault("persona", "consumer")
         return True, f"Welcome back, {user.username}!"
     except Exception as e:
         return False, f"Login failed: {e}"

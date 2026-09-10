@@ -26,6 +26,7 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.subheader("🛒 Consumer")
+    st.caption("Default")
     st.write("I'm checking a product I'm buying or already bought.")
     st.caption("You'll see: what rights you have, what's missing on the label, and how to report issues.")
     if st.button("Continue as Consumer", use_container_width=True):

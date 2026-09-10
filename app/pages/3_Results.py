@@ -16,9 +16,11 @@ consumed here and by app.db.crud.save_scan() (also later batch) for logging.
 """
 
 import streamlit as st
+from collections import defaultdict
 
 from app.auth.auth_handler import require_login
 from app.components.sidebar import render_sidebar
+from app.utils.persona_scripts import get_script
 
 st.set_page_config(page_title="Results — Ikraceya", page_icon="📋")
 
@@ -61,19 +63,52 @@ st.divider()
 st.subheader("Rule-by-rule breakdown")
 
 checks = result.get("checks", [])
+icon_map = {"PASS": "✅", "FAIL": "❌", "OUT_OF_SCOPE": "🚫"}
+
 if not checks:
     st.write("No individual rule results available yet.")
 else:
-    for check in checks:
-        rule_id = check.get("rule_id", "?")
-        section = check.get("section", "")
-        description = check.get("description", "")
-        check_status = check.get("status", "NOT_APPLICABLE")
+    # Manual-only checks (Font Size, Max Permissible Error, Price Revision,
+    # Penalties) always come back NOT_APPLICABLE — they can't be scanned
+    # from a photo by design. Separating them keeps the main view focused
+    # on what was actually checked, while still making them visible below.
+    active_checks = [c for c in checks if c.get("status") != "NOT_APPLICABLE"]
+    manual_checks = [c for c in checks if c.get("status") == "NOT_APPLICABLE"]
 
-        icon = {"PASS": "✅", "FAIL": "❌", "NOT_APPLICABLE": "➖"}.get(check_status, "➖")
-        with st.expander(f"{icon} [{rule_id}] {section}"):
-            st.write(description)
-            st.write(f"**Status:** {check_status}")
+    if not active_checks:
+        st.info("This scan didn't produce any automated results (see below for details).")
+    else:
+        # Group into sections, then let the user click between them as tabs
+        # instead of scrolling past everything — real navigation, not just
+        # a long list.
+        grouped = defaultdict(list)
+        for check in active_checks:
+            grouped[check.get("section", "Other")].append(check)
+
+        section_names = list(grouped.keys())
+        tabs = st.tabs(section_names)
+
+        for tab, section in zip(tabs, section_names):
+            with tab:
+                for check in grouped[section]:
+                    rule_id = check.get("rule_id", "?")
+                    check_status = check.get("status", "FAIL")
+                    fallback_description = check.get("description", "")
+
+                    script_text = get_script(rule_id, persona, check_status, fallback_description)
+                    icon = icon_map.get(check_status, "❔")
+
+                    st.markdown(f"{icon} **[{rule_id}]** {script_text}")
+                    st.write("")
+
+    if manual_checks:
+        with st.expander(f"📋 Requires manual/physical inspection ({len(manual_checks)})"):
+            st.caption("These can't be verified from a photo — not gaps, just outside what a scan can check.")
+            for check in manual_checks:
+                rule_id = check.get("rule_id", "?")
+                fallback_description = check.get("description", "")
+                script_text = get_script(rule_id, persona, "NOT_APPLICABLE", fallback_description)
+                st.markdown(f"➖ **[{rule_id}]** {script_text}")
 
 st.divider()
 

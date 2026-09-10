@@ -38,6 +38,16 @@ if not records:
 
 df = pd.DataFrame(records)
 
+# Turn the raw violations list (list of rule-id dicts) into a readable
+# summary string for the table — e.g. "DECL-5, MRP-FORMAT" or "None".
+def _summarize_violations(violations):
+    if not violations:
+        return "None"
+    return ", ".join(v.get("rule_id", "?") for v in violations)
+
+df["Violations"] = df["violations"].apply(_summarize_violations)
+df = df.drop(columns=["violations"])
+
 st.divider()
 
 # --- Filters ---
@@ -55,8 +65,13 @@ if status_filter != "All":
 if persona_filter != "All":
     filtered_df = filtered_df[filtered_df["persona"] == persona_filter]
 
+# Sr. No. is a simple 1-based row count for easy reference in conversation
+# ("row 3") — separate from scan_id, which is the real database key.
+filtered_df = filtered_df.reset_index(drop=True)
+filtered_df.insert(0, "Sr. No.", range(1, len(filtered_df) + 1))
+
 st.divider()
-st.dataframe(filtered_df, use_container_width=True)
+st.dataframe(filtered_df, use_container_width=True, hide_index=True)
 
 st.download_button(
     label="Download as CSV",

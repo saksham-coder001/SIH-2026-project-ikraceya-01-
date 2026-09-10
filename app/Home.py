@@ -13,6 +13,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import streamlit as st
 
 from app.auth.auth_handler import login_user, signup_user, logout_user
+from app.components.sidebar import render_sidebar
 
 st.set_page_config(page_title="Ikraceya — Compliance Checker", page_icon="✅", layout="wide")
 
@@ -37,7 +38,10 @@ def show_login_signup():
                 success, message = login_user(username, password)
                 if success:
                     st.success(message)
-                    st.rerun()
+                    # Go straight into the app instead of landing on a static
+                    # welcome screen — persona defaults to "consumer" already
+                    # (set in login_user), so users can head straight to Scan.
+                    st.switch_page("pages/2_Scan.py")
                 else:
                     st.error(message)
 
@@ -57,13 +61,21 @@ def show_login_signup():
 
 
 def show_logged_in_home():
+    render_sidebar()
+
     st.title(f"Welcome, {st.session_state['username']}")
     st.write(f"Role: **{st.session_state['role']}**")
-    st.write("Use the sidebar to select your persona, then head to the Scan page.")
+    st.write(f"Current persona: **{st.session_state.get('persona', 'consumer')}**")
 
-    if st.button("Log Out"):
-        logout_user()
-        st.rerun()
+    st.divider()
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🧭 Persona Selection", use_container_width=True):
+            st.switch_page("pages/1_Persona_Selection.py")
+    with col2:
+        if st.button("📷 Go to Scan", use_container_width=True):
+            st.switch_page("pages/2_Scan.py")
 
 
 # --- Router ---
